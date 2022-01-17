@@ -52,6 +52,7 @@ def image_to_tensor(
     """
     img = _normalize_image(image)
     image_size = img.size
+    print(image_size)
     if roi is None:
         roi = Rect(0.5, 0.5, 1.0, 1.0, rotation=0.0, normalized=True)
     roi = roi.scaled(image_size)
