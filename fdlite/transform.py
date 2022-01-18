@@ -8,8 +8,16 @@ from PIL import Image
 from PIL.Image import Image as PILImage
 from fdlite import ArgumentError, CoordinateRangeError, InvalidEnumError
 from fdlite.types import BBox, Detection, ImageTensor, Landmark, Rect
+import cv2
 """Functions for data transformations that are used by the detection models"""
 
+
+
+
+
+
+
+"""This is our modified version of the image to tensor functions."""
 
 def image_to_tensor(
     image: Union[PILImage, np.ndarray, str],
@@ -51,8 +59,104 @@ def image_to_tensor(
         original image dimensions.
     """
     img = _normalize_image(image)
+    #img = image
+    image_size = (img.shape[0],img.shape[1])
+    #print(image_size)
+    if roi is None:
+        roi = Rect(0.5, 0.5, 1.0, 1.0, rotation=0.0, normalized=True)
+    img_width = image_size[1]
+    img_height = image_size[0]
+    roi = roi.scaled((img_width, img_height))
+    if output_size is None:
+        output_size = (int(roi.size[0]), int(roi.size[1]))
+    width, height = (roi.size if keep_aspect_ratio      # type: ignore[misc]
+                     else output_size)
+    src_points = roi.points()
+    dst_points = [(0., 0.), (width, 0.), (width, height), (0., height)]
+    coeffs = _perspective_transform_coeff(src_points, dst_points)
+    #roi_image = img.transform(size=(width, height), method=Image.PERSPECTIVE,
+    #                          data=coeffs, resample=Image.LINEAR)
+    roi_image = cv2.resize(img, output_size)
+    # free some memory - we don't need the temporary image anymore
+    # if img != image:
+    #     img.close()
+    pad_x, pad_y = 0., 0.
+    # if keep_aspect_ratio:
+    #     # perform letterboxing if required
+    #     out_aspect = output_size[1] / output_size[0]    # type: ignore[index]
+    #     roi_aspect = roi.height / roi.width
+    #     new_width, new_height = int(roi.width), int(roi.height)
+    #     if out_aspect > roi_aspect:
+    #         new_height = int(roi.width * out_aspect)
+    #         pad_y = (1 - roi_aspect / out_aspect) / 2
+    #     else:
+    #         new_width = int(roi.height / out_aspect)
+    #         pad_x = (1 - out_aspect / roi_aspect) / 2
+    #     if new_width != int(roi.width) or new_height != int(roi.height):
+    #         pad_h, pad_v = int(pad_x * new_width), int(pad_y * new_height)
+    #         roi_image = roi_image.transform(
+    #             size=(new_width, new_height), method=Image.EXTENT,
+    #             data=(-pad_h, -pad_v, new_width - pad_h, new_height - pad_v))
+    #     roi_image = roi_image.resize(output_size, resample=Image.BILINEAR)
+    # if flip_horizontal:
+    #     roi_image = roi_image.transpose(method=Image.FLIP_LEFT_RIGHT)
+    # finally, apply value range transform
+    min_val, max_val = output_range
+    #print(output_range)
+    tensor_data = np.asarray(roi_image, dtype=np.float32)
+    tensor_data *= (max_val - min_val) / 255
+    tensor_data += min_val
+    return ImageTensor(tensor_data,
+                       padding=(pad_x, pad_y, pad_x, pad_y),
+                       original_size=image_size)
+
+
+"""end of function"""
+
+
+def image_to_tensor_0(
+    image: Union[PILImage, np.ndarray, str],
+    roi: Optional[Rect] = None,
+    output_size: Optional[Tuple[int, int]] = None,
+    keep_aspect_ratio: bool = False,
+    output_range: Tuple[float, float] = (0., 1.),
+    flip_horizontal: bool = False
+) -> ImageTensor:
+    """Load an image into an array and return data, image size, and padding.
+
+    This function combines the mediapipe calculator-nodes ImageToTensor,
+    ImageCropping, and ImageTransformation into one function.
+
+    Args:
+        image (Image|ndarray|str): Input image; preferably RGB, but will be
+            converted if necessary; loaded from file if a string is given
+
+        roi (Rect|None): Location within the image where to convert; can be
+            `None`, in which case the entire image is converted. Rotation is
+            supported.
+
+        output_size (tuple|None): Tuple of `(width, height)` describing the
+            output tensor size; defaults to ROI if `None`.
+
+        keep_aspect_ratio (bool): `False` (default) will scale the image to
+            the output size; `True` will keep the ROI aspect ratio and apply
+            letterboxing.
+
+        output_range (tuple): Tuple of `(min_val, max_val)` containing the
+            minimum and maximum value of the output tensor.
+            Defaults to (0, 1).
+
+        flip_horizontal (bool): Flip the resulting image horizontally if set
+            to `True`. Default: `False`
+
+    Returns:
+        (ImageTensor) Tensor data, padding for reversing letterboxing and
+        original image dimensions.
+    """
+    img = _normalize_image(image)
+    #img = image
     image_size = img.size
-    print(image_size)
+    #print(image_size)
     if roi is None:
         roi = Rect(0.5, 0.5, 1.0, 1.0, rotation=0.0, normalized=True)
     roi = roi.scaled(image_size)
@@ -330,7 +434,8 @@ def _normalize_image(image: Union[PILImage, np.ndarray, str]) -> PILImage:
     if isinstance(image, PILImage) and image.mode != 'RGB':
         return image.convert(mode='RGB')
     if isinstance(image, np.ndarray):
-        return Image.fromarray(image, mode='RGB')
+        #return Image.fromarray(image, mode='RGB')
+        return image
     if not isinstance(image, PILImage):
         return Image.open(image)
     return image
