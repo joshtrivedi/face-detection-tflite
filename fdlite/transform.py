@@ -19,7 +19,7 @@ import cv2
 
 """This is our modified version of the image to tensor functions."""
 
-def image_to_tensor(
+def image_to_tensor_0(
     image: Union[PILImage, np.ndarray, str],
     roi: Optional[Rect] = None,
     output_size: Optional[Tuple[int, int]] = None,
@@ -66,17 +66,17 @@ def image_to_tensor(
         roi = Rect(0.5, 0.5, 1.0, 1.0, rotation=0.0, normalized=True)
     img_width = image_size[1]
     img_height = image_size[0]
-    roi = roi.scaled((img_width, img_height))
+    roi = roi.scaled(image_size)
     if output_size is None:
         output_size = (int(roi.size[0]), int(roi.size[1]))
     width, height = (roi.size if keep_aspect_ratio      # type: ignore[misc]
                      else output_size)
-    src_points = roi.points()
-    dst_points = [(0., 0.), (width, 0.), (width, height), (0., height)]
+    src_points = np.array(roi.points())
+    dst_points = np.array([(0., 0.), (width, 0.), (width, height), (0., height)])
     coeffs = _perspective_transform_coeff(src_points, dst_points)
     #roi_image = img.transform(size=(width, height), method=Image.PERSPECTIVE,
-    #                          data=coeffs, resample=Image.LINEAR)
-    roi_image = cv2.resize(img, output_size)
+    #                         data=coeffs, resample=Image.LINEAR)
+    roi_image = cv2.resize(img,output_size,coeffs,0,0)
     # free some memory - we don't need the temporary image anymore
     # if img != image:
     #     img.close()
@@ -94,10 +94,13 @@ def image_to_tensor(
     #         pad_x = (1 - out_aspect / roi_aspect) / 2
     #     if new_width != int(roi.width) or new_height != int(roi.height):
     #         pad_h, pad_v = int(pad_x * new_width), int(pad_y * new_height)
+    #         padding = (pad_h, pad_v)
     #         roi_image = roi_image.transform(
-    #             size=(new_width, new_height), method=Image.EXTENT,
-    #             data=(-pad_h, -pad_v, new_width - pad_h, new_height - pad_v))
+    #              size=(new_width, new_height), method=Image.EXTENT,
+    #              data=(-pad_h, -pad_v, new_width - pad_h, new_height - pad_v))
+    #         ## roi_image = cv2.resize(roi_image, (new_width - pad_h, new_height - pad_v)) ##do not touch 
     #     roi_image = roi_image.resize(output_size, resample=Image.BILINEAR)
+    #     roi_image = cv2.resize(roi_image, output_size)
     # if flip_horizontal:
     #     roi_image = roi_image.transpose(method=Image.FLIP_LEFT_RIGHT)
     # finally, apply value range transform
@@ -114,7 +117,7 @@ def image_to_tensor(
 """end of function"""
 
 
-def image_to_tensor_0(
+def image_to_tensor(
     image: Union[PILImage, np.ndarray, str],
     roi: Optional[Rect] = None,
     output_size: Optional[Tuple[int, int]] = None,
@@ -434,8 +437,8 @@ def _normalize_image(image: Union[PILImage, np.ndarray, str]) -> PILImage:
     if isinstance(image, PILImage) and image.mode != 'RGB':
         return image.convert(mode='RGB')
     if isinstance(image, np.ndarray):
-        #return Image.fromarray(image, mode='RGB')
-        return image
+        return Image.fromarray(image, mode='RGB')
+        #return image
     if not isinstance(image, PILImage):
         return Image.open(image)
     return image
