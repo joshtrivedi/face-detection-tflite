@@ -7,3 +7,4 @@ dist/
 .eggs/
 .mypy_cache
 example.mp4
+input/
