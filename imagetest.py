@@ -40,7 +40,5 @@ while True:
                     #cv2.putText(img, inference , text_coords, cv2.FONT_HERSHEY_SIMPLEX, 1, red_color, 2, cv2.LINE_AA)
                     cv2.imshow("FaceDetection",img)
                     cv2.waitKey(1)
-    else:
-        print('no faces detected :(')
         
         # render_to_image(render_data, image).show()
