@@ -54,7 +54,7 @@ from keras import layers,callbacks,utils,applications,optimizers
 from keras.models import Sequential, Model, load_model
 
 model = Sequential()
-pretrained_model = tf.keras.applicationsEfficientNetB0(input_shape=(96,96,3), include_top=False, weights="imagenet")
+pretrained_model = tf.keras.applications.EfficientNetB0(input_shape=(96,96,3), include_top=False, weights="imagenet")
 model.add(pretrained_model)
 model.add(layers.GlobalAveragePooling2D())
 model.add(layers.Dropout(0.3))
@@ -63,3 +63,21 @@ model.summary()
 model.compile(optimizers="adam", loss="mean_squared_error",metrics=["mae"])
 ckp_path="trained_model/model"
 model_checkpoint=tf.keras.callbacks.ModelCheckpoint(filepath=ckp_path,monitor="val_mae",mode="auto",save_best_only=True,save_weigts_only=True)
+reduce_lf=tf.keras.callbacks.ReduceLROnPlateau(factor=0.9, monitor="val_mae",mode="auto",cooldown=0,patience=5, verbose=1, mon_lr=1e-6)
+EPOCHS=300
+BATCH_SIZE=64
+
+history=model.fit(X_train,
+                 Y_train,
+                 validation_data=(X_test,Y_test),
+                 batch_size=BATCH_SIZE,
+                 epochs=EPOCHS,
+                 callbacks=[model_checkpoint,reduce_lf]
+                 )
+
+model.load_weights(ckp_path)
+
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
+tflite_model = converter.convert()
+with open('face-detection.tflite', 'wb') as f:
+    f.write(tflite_model)
