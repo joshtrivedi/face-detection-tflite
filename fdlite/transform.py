@@ -19,7 +19,7 @@ import cv2
 
 """This is our modified version of the image to tensor functions."""
 
-def image_to_tensor_0(
+def image_to_tensor(
     image: Union[PILImage, np.ndarray, str],
     roi: Optional[Rect] = None,
     output_size: Optional[Tuple[int, int]] = None,
@@ -95,15 +95,17 @@ def image_to_tensor_0(
     #     if new_width != int(roi.width) or new_height != int(roi.height):
     #         pad_h, pad_v = int(pad_x * new_width), int(pad_y * new_height)
     #         padding = (pad_h, pad_v)
-    #         roi_image = roi_image.transform(
-    #              size=(new_width, new_height), method=Image.EXTENT,
-    #              data=(-pad_h, -pad_v, new_width - pad_h, new_height - pad_v))
-    #         ## roi_image = cv2.resize(roi_image, (new_width - pad_h, new_height - pad_v)) ##do not touch 
-    #     roi_image = roi_image.resize(output_size, resample=Image.BILINEAR)
+    #         # roi_image = roi_image.transform(
+    #         #      size=(new_width, new_height), method=Image.EXTENT,
+    #         #      data=(-pad_h, -pad_v, new_width - pad_h, new_height - pad_v))
+            
+            
+            
+    #     #roi_image = roi_image.resize(output_size, resample=Image.BILINEAR)
     #     roi_image = cv2.resize(roi_image, output_size)
     # if flip_horizontal:
     #     roi_image = roi_image.transpose(method=Image.FLIP_LEFT_RIGHT)
-    # finally, apply value range transform
+    #finally, apply value range transform
     min_val, max_val = output_range
     #print(output_range)
     tensor_data = np.asarray(roi_image, dtype=np.float32)
@@ -117,7 +119,7 @@ def image_to_tensor_0(
 """end of function"""
 
 
-def image_to_tensor(
+def image_to_tensor_0(
     image: Union[PILImage, np.ndarray, str],
     roi: Optional[Rect] = None,
     output_size: Optional[Tuple[int, int]] = None,
@@ -437,8 +439,8 @@ def _normalize_image(image: Union[PILImage, np.ndarray, str]) -> PILImage:
     if isinstance(image, PILImage) and image.mode != 'RGB':
         return image.convert(mode='RGB')
     if isinstance(image, np.ndarray):
-        return Image.fromarray(image, mode='RGB')
-        #return image
+        #return Image.fromarray(image, mode='RGB')
+        return image
     if not isinstance(image, PILImage):
         return Image.open(image)
     return image
